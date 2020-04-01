@@ -1,0 +1,256 @@
+version: '2'
+services:
+  mongo:
+    image: mongo
+    restart: always
+    container_name: mongo
+    hostname: mongo
+    ports:
+      - "27017:27017"
+
+  redis:
+    image: redis:alpine
+    restart: always
+    container_name: redis
+    hostname: redis
+    ports:
+      - "6379:6379"
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper
+    restart: always
+    container_name: zookeeper
+    hostname: zookeeper
+    ports:
+      - "2181:2181"
+#    volumes:
+#      - /data/zk-data:/var/lib/zookeeper/data
+#      - /data/zk-txn-logs:/var/lib/zookeeper/log
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  broker:
+    image: confluentinc/cp-enterprise-kafka
+    restart: always
+    container_name: broker
+    hostname: broker
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+#    volumes:
+#      - /data/kafka-data:/var/lib/kafka/data
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      # KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://broker:9092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://$HOST_IP:9092'
+      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: broker:9092
+      CONFLUENT_METRICS_REPORTER_ZOOKEEPER_CONNECT: zookeeper:2181
+      CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
+      CONFLUENT_METRICS_ENABLE: 'true'
+      CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry
+    restart: always
+    container_name: scheme-registry
+    hostname: schema-registry
+    depends_on:
+      - zookeeper
+      - broker
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: 'zookeeper:2181'
+
+#  connect:
+#    image: confluentinc/cp-kafka-connect
+#    restart: always
+#    container_name: connect
+#    hostname: connect
+#    depends_on:
+#      - zookeeper
+#      - broker
+#      - schema-registry
+#    ports:
+#      - "8083:8083"
+#    environment:
+#      CONNECT_BOOTSTRAP_SERVERS: 'broker:9092'
+#      CONNECT_REST_ADVERTISED_HOST_NAME: connect
+#      CONNECT_REST_PORT: 8083
+#      CONNECT_GROUP_ID: compose-connect-group
+#      CONNECT_CONFIG_STORAGE_TOPIC: docker-connect-configs
+#      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+#      CONNECT_OFFSET_FLUSH_INTERVAL_MS: 10000
+#      CONNECT_OFFSET_STORAGE_TOPIC: docker-connect-offsets
+#      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+#      CONNECT_STATUS_STORAGE_TOPIC: docker-connect-status
+#      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+#      CONNECT_KEY_CONVERTER: io.confluent.connect.avro.AvroConverter
+#      CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: 'http://schema-registry:8081'
+#      CONNECT_VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
+#      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: 'http://schema-registry:8081'
+#      CONNECT_INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+#      CONNECT_INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+#      CONNECT_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+
+#  control-center:
+#    image: confluentinc/cp-enterprise-control-center
+#    restart: always
+#    container_name: control-center
+#    hostname: control-center
+#    depends_on:
+#      - zookeeper
+#      - broker
+#      - schema-registry
+#      - connect
+#    ports:
+#      - "9021:9021"
+#    environment:
+#      CONTROL_CENTER_BOOTSTRAP_SERVERS: 'broker:9092'
+#      CONTROL_CENTER_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+#      CONTROL_CENTER_CONNECT_CLUSTER: 'connect:8083'
+#      CONTROL_CENTER_REPLICATION_FACTOR: 1
+#      CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: 1
+#      CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: 1
+#      CONFLUENT_METRICS_TOPIC_REPLICATION: 1
+#      PORT: 9021
+
+  pipelinedb:
+    image: tkanos/pipelinedb_kafka
+    restart: always
+    container_name: pipelinedb
+    hostname: pipelinedb
+    ports:
+      - "5432:5432"
+    links:
+      - zookeeper
+      - broker
+    depends_on:
+      - zookeeper
+      - broker
+
+  zeppelin:
+    image: xemuliam/zeppelin
+    restart: always
+    container_name: zeppelin
+    hostname: zeppelin
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+
+#  kafka-manager:
+#    image: dockerkafka/kafka-manager
+#    restart: always
+#    container_name: kafka-manager
+#    hostname: kafka-manager
+#    environment:
+#      - ZK_HOSTS=zookeeper:2181
+#    ports:
+#      - "9000:9000"
+#    links:
+#      - zookeeper:zookeeper
+#      - broker:kafka
+
+  qcloud-avc-sig:
+    image: eaglechen/qcloud_avc_sig
+    restart: always
+    container_name: qcloud-avc-sig
+    hostname: qcloud-avc-sig
+    ports:
+      - "40001:13001"
+    volumes:
+      - $GOPATH/src/tools/docker/data/qcloud/avc_keys/private_key:/app/private_key:ro
+      - $GOPATH/src/tools/docker/data/qcloud/avc_keys/public_key:/app/public_key:ro
+
+  snowflake-1:
+    image: snowflake
+    restart: always
+    container_name: snowflake-1
+    hostname: snowflake-dev-1
+    environment:
+      - MACHINE_ID=1
+      - ETCD_HOSTS=$ETCD_HOST
+    ports:
+      - "50003:50003"
+
+  auth-1:
+    image: auth
+    restart: always
+    container_name: auth-1
+    hostname: auth-dev-1
+    ports:
+      - "50006:50006"
+    environment:
+      - ETCD_HOSTS=$ETCD_HOST
+      - KAFKA_BROKERS=$HOST_IP:9092
+      - MONGODB=mongodb://$HOST_IP:27017/holdem
+      - PROXY_MONGODB=mongodb://$HOST_IP:27017/proxy
+      - CREATE_USER=true
+      - QCLOUD_AVC_HOST_ADDR=$HOST_IP:40001
+    depends_on:
+      - mongo
+      - snowflake-1
+      - qcloud-avc-sig
+
+  geoip-1:
+    image: geoip
+    restart: always
+    container_name: geoip-1
+    hostname: geoip-dev-1
+    ports:
+      - "50000:50000"
+
+  game-1:
+    image: game
+    restart: always
+    container_name: game-1
+    hostname: game-dev-1
+    ports:
+      - "51000:51000"
+    environment:
+      - ETCD_HOSTS=$ETCD_HOST
+      - MONGODB=mongodb://$HOST_IP:27017/holdem
+      - KAFKA_BROKERS=$HOST_IP:9092
+      - QCLOUD_AVC_HOST_ADDR=$HOST_IP:40001
+    depends_on:
+      - mongo
+      - broker
+      - snowflake-1
+      - qcloud-avc-sig
+
+  agent-1:
+    image: agent
+    restart: always
+    container_name: agent-1
+    hostname: agent-dev-1
+    environment:
+      - MACHINE_ID=1
+    ports:
+      - "8888:8888"
+      - "8888:8888/udp"
+    environment:
+      - ETCD_HOSTS=$ETCD_HOST
+    depends_on:
+      - game-1
+      - auth-1
+
+  api-1:
+    image: api
+    restart: always
+    container_name: api-1
+    hostname: api-1
+    ports:
+      - "30000:30000"
+    environment:
+      - ETCD_HOSTS=$ETCD_HOST
+      - KAFKA_BROKERS=$HOST_IP:9092
+      - MONGODB=mongodb://$HOST_IP:27017/holdem
+    depends_on:
+      - snowflake-1
