@@ -166,25 +166,33 @@ services:
     ports:
       - "40001:13001"
     volumes:
-      - $GOPATH/src/tools/docker/data/qcloud/avc_keys/private_key:/app/private_key:ro
-      - $GOPATH/src/tools/docker/data/qcloud/avc_keys/public_key:/app/public_key:ro
+      - /opt/dph/qcloud/avc_keys/private_key:/app/private_key:ro
+      - /opt/dph/qcloud/avc_keys/public_key:/app/public_key:ro
 
   snowflake-1:
-    image: snowflake
+    image: registry.cn-shenzhen.aliyuncs.com/dhp_cs96/snowflake 
     restart: always
     container_name: snowflake-1
-    hostname: snowflake-dev-1
+    hostname: snowflake-1
     environment:
       - MACHINE_ID=1
       - ETCD_HOSTS=$ETCD_HOST
     ports:
       - "50003:50003"
+      
+  geoip-1:
+    image: registry.cn-shenzhen.aliyuncs.com/dhp_cs96/geoip  
+    restart: always
+    container_name: geoip-1
+    hostname: geoip-1
+    ports:
+      - "50000:50000"    
 
   auth-1:
-    image: auth
+    image: registry.cn-shenzhen.aliyuncs.com/dhp_cs96/auth
     restart: always
     container_name: auth-1
-    hostname: auth-dev-1
+    hostname: auth-1
     ports:
       - "50006:50006"
     environment:
@@ -199,16 +207,10 @@ services:
       - snowflake-1
       - qcloud-avc-sig
 
-  geoip-1:
-    image: geoip
-    restart: always
-    container_name: geoip-1
-    hostname: geoip-dev-1
-    ports:
-      - "50000:50000"
+  
 
   game-1:
-    image: game
+    image: registry.cn-shenzhen.aliyuncs.com/dhp_cs96/game 
     restart: always
     container_name: game-1
     hostname: game-dev-1
@@ -226,7 +228,7 @@ services:
       - qcloud-avc-sig
 
   agent-1:
-    image: agent
+    image: registry.cn-shenzhen.aliyuncs.com/dhp_cs96/agent 
     restart: always
     container_name: agent-1
     hostname: agent-dev-1
@@ -241,11 +243,11 @@ services:
       - game-1
       - auth-1
 
-  api-1:
-    image: api
+  proxyadminweb:
+    image: harbor.dev.cs96.cn/dph/proxyadminweb 
     restart: always
-    container_name: api-1
-    hostname: api-1
+    container_name: proxyadminweb-1
+    hostname: proxyadminweb-1
     ports:
       - "30000:30000"
     environment:
