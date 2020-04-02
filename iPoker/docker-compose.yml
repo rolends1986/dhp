@@ -1,0 +1,145 @@
+version: '2'
+services: 
+  mongo:
+    image: mongo
+    restart: always
+    container_name: mongo
+    hostname: mongo
+    ports:
+      - "27017:27017"
+    networks:
+      -  ${PROJECT_NAME}Net
+
+  redis:
+    image: redis:alpine
+    restart: always
+    container_name: redis
+    hostname: redis
+    ports:
+      - "6379:6379"
+    networks:
+      -  ${PROJECT_NAME}Net
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper
+    restart: always
+    container_name: zookeeper
+    hostname: zookeeper
+    ports:
+      - "2181:2181" 
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000 
+    networks:
+      -  ${PROJECT_NAME}Net
+
+  
+  qcloud-avc-sig:
+    image: eaglechen/qcloud_avc_sig
+    restart: always
+    container_name: qcloud-avc-sig
+    hostname: qcloud-avc-sig
+    ports:
+      - "40001:13001"
+    volumes:
+      - $GOPATH/src/tools/docker/data/qcloud/avc_keys/private_key:/app/private_key:ro
+      - $GOPATH/src/tools/docker/data/qcloud/avc_keys/public_key:/app/public_key:ro
+   networks:
+      -  ${PROJECT_NAME}Net
+
+  dhp_etcd:
+    image: registry.cn-shenzhen.aliyuncs.com/dhp_cs96/dhp_etcd
+    restart: always
+    container_name: dhp_etcd
+    hostname: dhp_etcd
+    ports:
+      - "2379:2379"
+    networks:
+      -  ${PROJECT_NAME}Net     
+
+  snowflake-1:
+    image: registry.cn-shenzhen.aliyuncs.com/dhp_cs96/snowflake 
+    restart: always
+    container_name: snowflake-1
+    hostname: snowflake-dev-1
+    environment:
+      - MACHINE_ID=1
+      - ETCD_HOSTS=${ETCD_HOST}
+    ports:
+      - "50003:50003"
+    networks:
+      -  ${PROJECT_NAME}Net
+  
+  geoip-1:
+    image: registry.cn-shenzhen.aliyuncs.com/dhp_cs96/geoip  
+    restart: always
+    container_name: geoip-1
+    hostname: geoip-dev-1
+    ports:
+      - "50000:50000"
+    networks:
+      -  ${PROJECT_NAME}Net
+
+  auth-1:
+    image: registry.cn-shenzhen.aliyuncs.com/dhp_cs96/auth 
+    restart: always
+    container_name: auth-1
+    hostname: auth-dev-1
+    ports:
+      - "50006:50006"
+    environment:
+      - ETCD_HOSTS=${ETCD_HOST}
+      - KAFKA_BROKERS=${HOST_IP}:9092
+      - MONGODB=mongodb://${HOST_IP}:27017/holdem
+      - PROXY_MONGODB=mongodb://${HOST_IP}:27017/proxy
+      - CREATE_USER=true
+      - QCLOUD_AVC_HOST_ADDR=${HOST_IP}:40001
+    depends_on:
+      - mongo
+      - snowflake-1
+      - qcloud-avc-sig
+   networks:
+      -  ${PROJECT_NAME}Net
+
+  game-1:
+    image: registry.cn-shenzhen.aliyuncs.com/dhp_cs96/game 
+    restart: always
+    container_name: game-1
+    hostname: game-1
+    ports:
+      - "51000:51000"
+    environment:
+      - ETCD_HOSTS=${ETCD_HOST}
+      - MONGODB=mongodb://${HOST_IP}:27017/holdem
+      - KAFKA_BROKERS=${HOST_IP}:9092
+      - QCLOUD_AVC_HOST_ADDR=${HOST_IP}:40001
+    depends_on:
+      - mongo
+      - broker
+      - snowflake-1
+      - qcloud-avc-sig
+   networks:
+      -  ${PROJECT_NAME}Net
+
+
+  agent-1:
+    image: registry.cn-shenzhen.aliyuncs.com/dhp_cs96/agent
+    restart: always
+    container_name: agent-1
+    hostname: agent-1
+    environment:
+      - MACHINE_ID=1
+    ports:
+      - "8888:8888"
+      - "8888:8888/udp"
+    environment:
+      - ETCD_HOSTS=${ETCD_HOST}
+    depends_on:
+      - game-1
+      - auth-1
+    networks:
+      -  ${PROJECT_NAME}Net
+
+networks:
+   ${PROJECT_NAME}Net:
+    external: false
