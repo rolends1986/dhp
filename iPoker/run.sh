@@ -7,5 +7,5 @@ export ETCD_HOST=http://$HOST_IP:2379
 mkdir $PROJECT_NAME
 cd $PROJECT_NAME
 wget  https://raw.githubusercontent.com/rolends1986/dhp/master/iPoker/docker-compose.yml
-docker compose  up -d
+docker-compose  up -d
 cd ..
