@@ -1,14 +1,11 @@
 #!/usr/bin/env bash
-export PROJECT_NAME=iPoker
-export COMPOSE_PROJECT_NAME=$PROJECT_NAME 
 export HOST_IP=118.107.46.16
-export ETCD_HOST=http://118.107.46.16:2379
+export PROJECT_NAME=iPoker
+export COMPOSE_PROJECT_NAME=$PROJECT_NAME  
+export ETCD_HOST=http://$HOST_IP:2379
 
 mkdir $PROJECT_NAME
 cd $PROJECT_NAME
-wget  
-
-
+wget  https://raw.githubusercontent.com/rolends1986/dhp/master/iPoker/docker-compose.yml
+docker compose  up -d
 cd ..
- 
- 
